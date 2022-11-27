@@ -1,11 +1,16 @@
+import uuid
+
+import passlib.handlers.phpass
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from passlib.handlers.phpass import phpass
 from filters import IsPrivate
 from loader import dp
 from states import registration
 import mysql.connector
+
 
 db = mysql.connector.connect(
     host="localhost",
@@ -84,7 +89,6 @@ async def get_lg(message: types.Message, state: FSMContext):
     await registration.user_pswd.set()
 
 
-
 @dp.message_handler(IsPrivate(), state=registration.user_pswd)
 async def get_pswd(message: types.Message, state: FSMContext):
     await state.update_data(user_pswd=message.text)
@@ -94,6 +98,12 @@ async def get_pswd(message: types.Message, state: FSMContext):
     data = await state.get_data()
     user_lg = data.get('user_lg')
     user_pswd = data.get('user_pswd')
+
+    # def hash_password(password):
+    #     salt = uuid.uuid4().hex
+    #     return passlib.handlers.phpass.phpass(salt.encode() + password.encode()).hexdigest() + ':' + salt
+
+    user_pswd3 = phpass.hash(user_pswd)
     user_nick = data.get('user_nick')
     user_email = data.get('user_email')
     user_regdate = data.get('user_regdate')
@@ -104,7 +114,7 @@ async def get_pswd(message: types.Message, state: FSMContext):
     user_tg_id = data.get('user_tg_id')
     try:
         mysql = "INSERT INTO wp_users ( user_login, user_pass, user_nicename, user_email, user_url) VALUES (%s, %s, %s, %s, %s)"
-        val = (user_lg, user_pswd, user_nick, user_email, user_url)
+        val = (user_lg, user_pswd3, user_nick, user_email, user_url)
         cursor.execute(mysql, val)
         db.commit()
         db.close()
@@ -112,7 +122,7 @@ async def get_pswd(message: types.Message, state: FSMContext):
                              f'Ваши данные: \n'
                              f'Никнейм:  {user_nick}\n'
                              f'Логин:  {user_lg}\n'
-                             f'Пароль:  {user_pswd}\n'
+                             f'Пароль:  {user_pswd3}\n'
                              f'Почта:  {user_email}\n'
                              f'Дата регистрации:  {user_regdate}\n'
                              f'Адрес:  {user_address}\n'

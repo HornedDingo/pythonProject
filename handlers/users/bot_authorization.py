@@ -2,6 +2,8 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from passlib.handlers.phpass import phpass
+
 from filters import IsPrivate
 from loader import dp
 from states import authorization
@@ -14,7 +16,6 @@ db = mysql.connector.connect(
     port="3306",
     database="pollbase"
 )
-
 
 cursor2 = db.cursor()
 cursor2.execute("USE pollbase")
@@ -44,9 +45,11 @@ async def get_pswd2(message: types.Message, state: FSMContext):
     data = await state.get_data()
     user_lg2 = data.get('user_lg2')
     user_pswd2 = data.get('user_pswd2')
-    mysql="SELECT user_nicename from wp_users where user_login = %s AND user_pass = %s;"
-    cursor2.execute(mysql, (user_lg2, user_pswd2))
-    if not cursor2.fetchone():
+    mysql="SELECT user_pass from wp_users where user_login = %s;"
+    cursor2.execute(mysql, (user_lg2,))
+    user_pswd4 = cursor2.fetchone()
+    user_pswd4 = ''.join(user_pswd4)
+    if not phpass.verify(user_pswd2, user_pswd4):
         await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.')
         await state.finish()
     else:
