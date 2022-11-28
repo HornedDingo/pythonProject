@@ -41,17 +41,18 @@ async def get_lg(message: types.Message, state: FSMContext):
 
 @dp.message_handler(IsPrivate(), state=authorization.user_pswd2)
 async def get_pswd2(message: types.Message, state: FSMContext):
-    await state.update_data(user_pswd2=message.text)
-    data = await state.get_data()
-    user_lg2 = data.get('user_lg2')
-    user_pswd2 = data.get('user_pswd2')
-    mysql="SELECT user_pass from wp_users where user_login = %s;"
-    cursor2.execute(mysql, (user_lg2,))
-    user_pswd4 = cursor2.fetchone()
-    user_pswd4 = ''.join(user_pswd4)
-    if not phpass.verify(user_pswd2, user_pswd4):
-        await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.')
-        await state.finish()
-    else:
+    try:
+        await state.update_data(user_pswd2=message.text)
+        data = await state.get_data()
+        user_lg2 = data.get('user_lg2')
+        user_pswd2 = data.get('user_pswd2')
+        mysql = "SELECT user_pass from wp_users where user_login = %s;"
+        cursor2.execute(mysql, (user_lg2,))
+        user_pswd4 = cursor2.fetchone()
+        user_pswd4 = ''.join(user_pswd4)
+        phpass.verify(user_pswd2, user_pswd4)
         await message.answer(f'Добро пожаловать!')
+        await state.finish()
+    except Exception as e:
+        await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.')
         await state.finish()
