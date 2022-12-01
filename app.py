@@ -1,13 +1,13 @@
-async def on_startup(dp):
+async def on_startup(dpp):
 
     import filters
-    filters.setup(dp)
+    filters.setup(dpp)
 
     from utils.notify_admins import on_startup_notifying
-    await on_startup_notifying(dp)
+    await on_startup_notifying(dpp)
 
-    from  utils.set_bot_commands import set_default_commands
-    await set_default_commands(dp)
+    from utils.set_bot_commands import set_default_commands
+    await set_default_commands(dpp)
 
     print('Бот запущен')
 
