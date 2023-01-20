@@ -1,2 +1,2 @@
-from .registration import registration
+from .registrationpr import registrationpr
 from .authorizationpr import AuthorizationPr

@@ -1,25 +1,32 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from passlib.handlers.phpass import phpass
-
 from filters import IsPrivate
 from handlers.users.start import search_id, search_status
 from loader import dp
 from states import AuthorizationPr
-import mysql.connector
-
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    passwd="rgaatrfla",
-    port="3306",
-    database="pollbase"
-)
+from database.db import db
+from database.get import mysql4, mysql5
+from keyboards.reply import kb_menu3
+from handlers.users.bot_menu import show_list
+from database.get import mysql9
 
 cursor2 = db.cursor()
-cursor3 = db.cursor()
+
 cursor2.execute("USE pollbase")
+
+
+def q_done(id_q, user_id):
+    q_id = id_q
+    userid = user_id
+    cursor2.execute(mysql9, (q_id, userid,))
+    id_log = cursor2.fetchone()
+    if id_log is not None:
+        if int(''.join(map(str, id_log))) > 0:
+            done_q = True
+    else:
+        done_q = False
+    return done_q
 
 
 @dp.message_handler(IsPrivate(), text='Авторизоваться')
@@ -32,26 +39,18 @@ async def bot_auth2(message: types.Message):
         if status_user == 0:
             await message.answer(f'Попробуйте позже. Ожидается одобрение регистрации.')
         elif status_user == 1:
-            mysql2 = "SELECT meta_value from wp_usermeta where meta_key = 'auth_2' and user_id = %s"
-            cursor3.execute(mysql2, (userid2,))
-            exit_value = cursor3.fetchone()
+            cursor2.execute(mysql4, (userid2,))
+            exit_value = cursor2.fetchone()
             exit_value = int(''.join(map(str, exit_value)))
             if exit_value == 0:
-                await message.answer(f'Добро пожаловать!')
+                questions_list = show_list(message.from_user.id)
+                print(questions_list)
+                await message.answer(f'Добро пожаловать!\n' + questions_list[1])
             else:
                 await message.answer(f'Здравствуйте, \n'
                                      f'для авторизации введите свой логин:')
                 await AuthorizationPr.user_lg2.set()
     except Exception:
-        kb_menu3 = ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text='Вернуться в меню')
-                ]
-            ],
-            resize_keyboard=True,
-            one_time_keyboard=True
-        )
         await message.answer(f'Вы не зарегистрированы.', reply_markup=kb_menu3)
 
 
@@ -69,13 +68,11 @@ async def get_pswd2(message: types.Message, state: FSMContext):
         data = await state.get_data()
         user_lg2 = data.get('user_lg2')
         user_pswd2 = data.get('user_pswd2')
-        mysql1 = "SELECT user_pass from wp_users where user_login = %s;"
-        cursor2.execute(mysql1, (user_lg2,))
+        cursor2.execute(mysql5, (user_lg2,))
         user_pswd4 = cursor2.fetchone()
         user_pswd4 = ''.join(user_pswd4)
         phpass.verify(user_pswd2, user_pswd4)
         await message.answer(f'Добро пожаловать!')
-        # await state.finish()
     except Exception:
         await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.')
     await state.finish()

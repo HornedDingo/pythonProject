@@ -1,8 +1,8 @@
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 
-class registration(StatesGroup):
-    user_lg= State()
+class registrationpr(StatesGroup):
+    user_lg = State()
     user_pswd = State()
     user_nick = State()
     user_email = State()
