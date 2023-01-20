@@ -1,7 +1,5 @@
 from database.db import db
 from database.get import mysql7, mysql8, mysql10, mysql11, mysql12
-from handlers.users.bot_authorization import q_done
-from handlers.users.start import search_id
 
 
 cursor2 = db.cursor()
@@ -40,20 +38,3 @@ def q_name(id_q):
     cursor2.execute(mysql11, (q_id,))
     name_q = cursor2.fetchone()
     return name_q
-
-
-def show_list(user_id):
-    b = []
-    a = []
-    cursor2.execute(mysql12)
-    qs = cursor2.fetchall()
-    n = len(qs)
-    for i in range(0, n):
-        b.append(int(''.join(map(str, qs[i]))))
-        q_user_id = search_for_users_id(b[i])
-        q_active = q_is_active(b[i])
-        q_answered = q_done(b[i], search_id(user_id))
-        print(q_answered)
-        if ((q_user_id == 4) or (q_user_id == 1)) & (q_active is True) & (q_answered is False):
-            a.append(''.join(q_name(b[i])))
-    return a

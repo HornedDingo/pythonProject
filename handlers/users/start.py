@@ -1,9 +1,9 @@
 from aiogram import types
 from database.db import db
+from handlers.users.bot_authorization import search_id, search_status
 from loader import dp
 from filters import IsPrivate
 from keyboards.reply import kb_menu, kb_menu2, kb_menu4
-from database.get import mysql2, mysql3
 
 cursor2 = db.cursor()
 cursor2.execute("USE pollbase")
@@ -38,17 +38,3 @@ async def command_start4(message: types.Message):
         await message.answer(f'Статус регистрации: одобрено.', reply_markup=kb_menu4)
     else:
         await message.answer(f'Вы заблокированы.', reply_markup=kb_menu4)
-
-
-def search_id(id_tg_user):
-    userid = id_tg_user
-    cursor2.execute(mysql2, (userid,))
-    userid = cursor2.fetchone()
-    return userid
-
-
-def search_status(userid):
-    userid2 = userid
-    cursor2.execute(mysql3, (userid2,))
-    status_user = cursor2.fetchone()
-    return status_user
