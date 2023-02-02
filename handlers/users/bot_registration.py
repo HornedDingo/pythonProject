@@ -4,6 +4,7 @@ from database.db import db
 from database.get import mysql6
 from database.create import mysql1, mysql2
 from aiogram import types
+from aiogram.types import ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 from keyboards.reply import kb_menu4
 from passlib.handlers.phpass import phpass
@@ -19,16 +20,21 @@ cursor.execute("USE pollbase")
 @dp.message_handler(IsPrivate(), text='Зарегистрироваться')
 async def bot_register1(message: types.Message):
     await message.answer(f'Здравствуйте, \n'
-                         f'для регистрации придумайте свой никнейм:')
+                         f'для регистрации придумайте свой никнейм:', reply_markup=ReplyKeyboardRemove())
     await registrationpr.user_nick.set()
 
 
 @dp.message_handler(IsPrivate(), state=registrationpr.user_nick)
 async def get_user_nick(message: types.Message, state: FSMContext):
-    await state.update_data(user_nick=message.text)
-    await state.update_data(user_display_name=message.text)
-    await message.answer(f'<b>{message.text}</b>, пожалуйста, напишите ваш номер телефона.')
-    await registrationpr.user_number.set()
+    answer = message.text
+    pattern = r"^.{2,15}$"
+    if re.match(pattern, answer):
+        await state.update_data(user_nick=message.text)
+        await state.update_data(user_display_name=message.text)
+        await message.answer(f'<b>{message.text}</b>, пожалуйста, напишите ваш номер телефона.')
+        await registrationpr.user_number.set()
+    else:
+        await message.answer(f'Введите корректный никнейм. \n\nОн должен умещаться в длину от 2 до 15 символов.')
 
 
 @dp.message_handler(IsPrivate(), state=registrationpr.user_number)
@@ -79,13 +85,21 @@ async def get_email(message: types.Message, state: FSMContext):
 
 @dp.message_handler(IsPrivate(), state=registrationpr.user_lg)
 async def get_lg(message: types.Message, state: FSMContext):
-    await state.update_data(user_lg=message.text)
-    await message.answer(f'Придумайте ваш будущий пароль. \n\nОн должен : '
-                         f'\n1. Минимум одну цифру; '
-                         f'\n2. Одну заглавную букву и одну строчную букву; '
-                         f'\n3. Минимум один специальный символ; '
-                         f'\n4. Иметь длину от 6 до 20 символов.')
-    await registrationpr.user_pswd.set()
+    answer = message.text
+    user_lg_regex = re.compile(r'^[a-zA-Z0-9]{3,14}$')
+    if user_lg_regex.match(answer):
+        await state.update_data(user_lg=message.text)
+        await message.answer(f'Придумайте ваш будущий пароль. \n\nОн должен : '
+                             f'\n1. Минимум одну цифру; '
+                             f'\n2. Одну заглавную букву и одну строчную букву; '
+                             f'\n3. Минимум один специальный символ; '
+                             f'\n4. Иметь длину от 6 до 20 символов.')
+        await registrationpr.user_pswd.set()
+    else:
+        await message.answer(f'Введите корректный логин. \n\nОн может содержать: '
+                             f'\n1. Латинские буквы; '
+                             f'\n2. Специальные символы; '
+                             f'\n3. Иметь длину от 6 до 15 символов.')
 
 
 @dp.message_handler(IsPrivate(), state=registrationpr.user_pswd)
