@@ -2,8 +2,8 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 kb_menu = ReplyKeyboardMarkup(resize_keyboard=True)
 b1 = KeyboardButton(text='Авторизоваться')
-b2 = KeyboardButton(text='Зарегистрироваться')
-kb_menu.add(b1).insert(b2)
+# b2 = KeyboardButton(text='Зарегистрироваться')
+kb_menu.add(b1)
 
 kb_menu3 = ReplyKeyboardMarkup(resize_keyboard=True)
 b5 = KeyboardButton(text='Вернуться в меню')

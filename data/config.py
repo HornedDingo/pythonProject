@@ -6,5 +6,5 @@ load_dotenv()
 BOT_TOKEN = str(os.getenv("BOT_TOKEN"))
 
 admins = [
-    951092978
+    # 951092978
 ]

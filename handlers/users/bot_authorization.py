@@ -9,8 +9,8 @@ from handlers.users.bot_menu import search_for_users_id, q_is_active, q_name
 from loader import dp, bot
 from states import AuthorizationPr
 from database.db import db
-from database.get import mysql4, mysql5, mysql9, mysql2, mysql3, mysql12, mysql13, mysql14, mysql15
-from database.create import mysql16
+from database.get import mysql4, mysql5, mysql9, mysql, mysql3, mysql12, mysql13, mysql14, mysql15, mysql20
+from database.create import mysql16, mysql2
 from keyboards.reply import kb_menu3, kb_menu4
 
 cursor2 = db.cursor()
@@ -29,7 +29,14 @@ class Question:
 
 def search_id(id_tg_user):
     userid = id_tg_user
-    cursor2.execute(mysql2, (userid,))
+    cursor2.execute(mysql, (userid,))
+    userid = cursor2.fetchone()
+    return userid
+
+
+def search_id_by_login(ex_login):
+    user_log = ex_login
+    cursor2.execute(mysql20, (user_log,))
     userid = cursor2.fetchone()
     return userid
 
@@ -87,32 +94,37 @@ async def show_users_questions():
 question = Question()
 
 
-@dp.message_handler(IsPrivate(), text='Авторизоваться')
+@dp.message_handler(IsPrivate(), text='/start')
 async def bot_auth2(message: types.Message):
     try:
         userid2 = search_id(message.from_user.id)
-        userid2 = int(''.join(map(str, userid2)))
-        question.id_user = userid2
-        question.id_chat = message.chat.id
-        status_user = search_status(userid2)
-        status_user = int(''.join(map(str, status_user)))
-        if status_user == 0:
-            await message.answer(f'Попробуйте позже. Ожидается одобрение регистрации.', reply_markup=kb_menu4)
-        elif status_user == 1:
-            cursor2.execute(mysql4, (userid2,))
-            exit_value = cursor2.fetchone()
-            exit_value = int(''.join(map(str, exit_value)))
-            cursor2.execute(mysql13, (userid2,))
-            user_role = cursor2.fetchone()
-            user_role = int(''.join(map(str, user_role)))
-            question.user_role = user_role
-            if exit_value == 0:
-                await bot.send_message(message.from_user.id, 'Добро пожаловать!', reply_markup=ReplyKeyboardRemove())
-                await show_users_questions()
-            else:
-                await message.answer(f'Здравствуйте, \n'
-                                     f'для авторизации введите свой логин:',  reply_markup=ReplyKeyboardRemove())
-                await AuthorizationPr.user_lg2.set()
+        if userid2:
+            userid2 = int(''.join(map(str, userid2)))
+            question.id_user = userid2
+            question.id_chat = message.chat.id
+            status_user = search_status(userid2)
+            status_user = int(''.join(map(str, status_user)))
+            if status_user == 0:
+                await message.answer(f'Попробуйте позже. Ожидается одобрение регистрации.', reply_markup=kb_menu4)
+            elif status_user == 1:
+                cursor2.execute(mysql4, (userid2,))
+                exit_value = cursor2.fetchone()
+                exit_value = int(''.join(map(str, exit_value)))
+                cursor2.execute(mysql13, (userid2,))
+                user_role = cursor2.fetchone()
+                user_role = int(''.join(map(str, user_role)))
+                question.user_role = user_role
+                if exit_value == 0:
+                    await bot.send_message(message.from_user.id, 'Добро пожаловать!', reply_markup=ReplyKeyboardRemove())
+                    await show_users_questions()
+                else:
+                    await message.answer(f'Здравствуйте, \n'
+                                         f'для авторизации введите свой логин:',  reply_markup=ReplyKeyboardRemove())
+                    await AuthorizationPr.user_lg2.set()
+        else:
+            await message.answer(f'Здравствуйте, \n'
+                                 f'для авторизации введите свой логин:', reply_markup=ReplyKeyboardRemove())
+            await AuthorizationPr.user_lg2.set()
     except Exception:
         await message.answer(f'Вы не зарегистрированы или ожидается одобрение регистрации..', reply_markup=kb_menu3)
 
@@ -129,7 +141,10 @@ async def get_pswd2(message: types.Message, state: FSMContext):
     try:
         await state.update_data(user_pswd2=message.text)
         data = await state.get_data()
-        userid2 = search_id(message.from_user.id)
+        if search_id(message.from_user.id):
+            userid2 = search_id(message.from_user.id)
+        else:
+            userid2 = search_id_by_login(data.get('user_lg2'))
         userid2 = int(''.join(map(str, userid2)))
         question.id_user = userid2
         question.id_chat = message.chat.id
@@ -143,6 +158,8 @@ async def get_pswd2(message: types.Message, state: FSMContext):
         user_role = cursor2.fetchone()
         user_role = int(''.join(map(str, user_role)))
         question.user_role = user_role
+        cursor2.execute(mysql2, (userid2, "telegramid", message.from_user.id,))
+        db.commit()
         await bot.send_message(message.from_user.id, 'Добро пожаловать!')
         await show_users_questions()
     except Exception:
@@ -165,7 +182,7 @@ async def answer_poll(callback_query: types.CallbackQuery):
         n = len(raw_answers)
         for i in range(0, n):
             answers.append(''.join(raw_answers[i]))
-        sendpoll = await bot.send_poll(callback_query.message.chat.id, cqdata, answers, 'regular')
+        sendpoll = await bot.send_poll(question.id_chat, cqdata, answers, 'regular')
         await bot.answer_callback_query(callback_query.id)
     else:
         await callback_query.message.delete()
