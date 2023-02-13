@@ -11,7 +11,7 @@ from states import AuthorizationPr
 from database.db import db
 from database.get import mysql4, mysql5, mysql9, mysql, mysql3, mysql12, mysql13, mysql14, mysql15, mysql20
 from database.create import mysql16, mysql2
-from keyboards.reply import kb_menu3, kb_menu4
+from keyboards.reply import kb_menu3, kb_menu4, kb_menu
 
 cursor2 = db.cursor()
 cursor2.execute("USE pollbase")
@@ -87,11 +87,18 @@ async def show_users_questions():
                                reply_markup=get_questions(a))
     if a:
         await bot.send_message(question.id_chat, f'Ниже представлены доступные Вам на данный момент опросы.\n\n'
-                                                       f'Нажмите на один из них для перехода к голосованию:',
+                                                 f'Нажмите на один из них для перехода к голосованию:',
                                reply_markup=get_questions(a))
 
 
 question = Question()
+
+
+@dp.message_handler(IsPrivate(), text='Авторизоваться')
+async def get_start_again(message: types.Message):
+    await message.answer(f'Здравствуйте, \n'
+                         f'для авторизации введите свой логин:', reply_markup=ReplyKeyboardRemove())
+    await AuthorizationPr.user_lg2.set()
 
 
 @dp.message_handler(IsPrivate(), text='/start')
@@ -119,7 +126,7 @@ async def bot_auth2(message: types.Message):
                     await show_users_questions()
                 else:
                     await message.answer(f'Здравствуйте, \n'
-                                         f'для авторизации введите свой логин:',  reply_markup=ReplyKeyboardRemove())
+                                         f'для авторизации введите свой логин:', reply_markup=ReplyKeyboardRemove())
                     await AuthorizationPr.user_lg2.set()
         else:
             await message.answer(f'Здравствуйте, \n'
@@ -145,6 +152,8 @@ async def get_pswd2(message: types.Message, state: FSMContext):
             userid2 = search_id(message.from_user.id)
         else:
             userid2 = search_id_by_login(data.get('user_lg2'))
+            cursor2.execute(mysql2, (userid2, "telegramid", message.from_user.id,))
+            db.commit()
         userid2 = int(''.join(map(str, userid2)))
         question.id_user = userid2
         question.id_chat = message.chat.id
@@ -153,17 +162,17 @@ async def get_pswd2(message: types.Message, state: FSMContext):
         cursor2.execute(mysql5, (user_lg2,))
         user_pswd4 = cursor2.fetchone()
         user_pswd4 = ''.join(user_pswd4)
-        phpass.verify(user_pswd2, user_pswd4)
-        cursor2.execute(mysql13, (userid2,))
-        user_role = cursor2.fetchone()
-        user_role = int(''.join(map(str, user_role)))
-        question.user_role = user_role
-        cursor2.execute(mysql2, (userid2, "telegramid", message.from_user.id,))
-        db.commit()
-        await bot.send_message(message.from_user.id, 'Добро пожаловать!')
-        await show_users_questions()
+        if phpass.verify(user_pswd2, user_pswd4):
+            cursor2.execute(mysql13, (userid2,))
+            user_role = cursor2.fetchone()
+            user_role = int(''.join(map(str, user_role)))
+            question.user_role = user_role
+            await bot.send_message(message.from_user.id, 'Добро пожаловать!')
+            await show_users_questions()
+        else:
+            await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.', reply_markup=kb_menu)
     except Exception:
-        await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.')
+        await message.answer(f'Неверно введены данные. \nПопробуйте ещё раз.', reply_markup=kb_menu)
     await state.finish()
 
 
