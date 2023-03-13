@@ -1,11 +1,11 @@
-from database.db import db
-from database.get import mysql7, mysql8, mysql10, mysql11, mysql12
+from database import db
+from database import mysql7, mysql8, mysql9, mysql10, mysql11, mysql12, mysql15, mysql21, mysql22
 
 
-cursor2 = db.cursor()
-cursor2.execute("USE pollbase")
+cursor2 = db.cursor(buffered=True)
 
 
+# Search for which users the poll is available
 def search_for_users_id(id_q):
     q_id = id_q
     cursor2.execute(mysql7, (q_id,))
@@ -16,6 +16,7 @@ def search_for_users_id(id_q):
     return answer_2
 
 
+# Check relevance of poll
 def q_is_active(id_q):
     q_id = id_q
     cursor2.execute(mysql8, (q_id,))
@@ -27,14 +28,30 @@ def q_is_active(id_q):
     return actual_q
 
 
+# Count total number of questions
 def q_count():
     cursor2.execute(mysql10)
     q_number = cursor2.fetchone()
     return q_number
 
 
+# Get question's name
 def q_name(id_q):
     q_id = id_q
     cursor2.execute(mysql11, (q_id,))
     name_q = cursor2.fetchone()
     return name_q
+
+
+# Check if completed
+def q_done(id_q, user_id):
+    q_id = id_q
+    userid = user_id
+    cursor2.execute(mysql9, (q_id, userid,))
+    id_log = cursor2.fetchone()
+    if id_log is not None:
+        if int(''.join(map(str, id_log))) > 0:
+            done_q = True
+    else:
+        done_q = False
+    return done_q
