@@ -20,4 +20,4 @@ mysql24 = "SELECT note from wp_democracy_q where id = %s"
 mysql25 = "SELECT aid from wp_democracy_a where answer = %s"
 mysql27 = "SELECT votes from wp_democracy_a where aid = %s"
 mysql28 = "SELECT multiple from wp_democracy_q where id = %s"
-
+mysql29  = "SELECT "

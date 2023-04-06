@@ -1,21 +1,23 @@
 import datetime
 from asyncio import sleep
 from aiogram import types
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardRemove, PollAnswer, PollOption
 from aiogram.dispatcher import FSMContext
 from passlib.handlers.phpass import phpass
 from loader import dp, bot
 from filters import IsPrivate
-from database import db, mysql, mysql2, mysql3, mysql4, mysql5, mysql12, mysql13, mysql15, mysql16, mysql21, mysql22, \
+from database import db, mysql, mysql2, mysql3, mysql4, mysql5, mysql12, mysql13, mysql14, mysql15, mysql16, mysql21, mysql22, \
     mysql25, mysql26, mysql27, mysql28
-from keyboards import kb_menu, kb_main_btn, kb_menu3, kb_menu4, kb_poll_btn, kb_new_poll
+from keyboards import kb_menu, kb_main_btn, kb_menu3, kb_menu4, kb_poll_btn, kb_new_poll, kb_go_back
 from states import AuthorizationPr
 from .bot_user import search_smth, search_id_by_login
-from .bot_questions import q_done, q_name, q_is_active, search_for_users_id
+from .bot_questions import q_done, q_name, q_is_active, search_for_users_id, search_qid, search_q_name, get_questions
+from aiogram.bot import Bot
 
 cursor2 = db.cursor()
 
 
+# Class for information of user
 class User:
     def __init__(self):
         self.id_chat = ""
@@ -26,6 +28,7 @@ class User:
         self.user_role = ""
 
 
+# Class for information about poll
 class Question:
     def __init__(self):
         self.q_id = ""
@@ -36,12 +39,22 @@ class Question:
         self.previous_in_p = ""
         self.available_answers = []
         self.q_multiple = False
+        self.q_poll_id = ""
+
+
+# Get chosen results to show
+class Result:
+    def __init__(self):
+        self.q_id = ""
+        self.q_answers = ""
+
 
 
 user = User()
 question = Question()
 
 
+# Get an array of questions
 def all_questions():
     cursor2 = db.cursor()
     cursor2.execute("USE pollbase")
@@ -66,16 +79,15 @@ def all_questions():
     return b
 
 
+# Create and send poll
 async def one_poll(b):
     a = b
     if a:
         c = []
         answers = []
-        print(a, ' ', a[0])
         cursor2.execute(mysql21, (a[0],))
         in_p = cursor2.fetchone()
         in_p = int(''.join(map(str, in_p)))
-        print(in_p, ' in_p')
         question.next_in_p = in_p
         if question.next_in_p == question.previous_in_p:
             cursor2.execute(mysql22, (in_p,))
@@ -84,17 +96,12 @@ async def one_poll(b):
             for i in range(0, n):
                 if not q_done(int(''.join(map(str, qs[i]))), user.user_db_id):
                     c.append(int(''.join(map(str, qs[i]))))
-            print(c, ' c')
-            # for j in range(0, n):
             cursor2.execute(mysql15, (c[0],))
             raw_answers = cursor2.fetchall()
             n = len(raw_answers)
-            print(c, c[0])
-            print(answers)
             global sent_poll
             for i in range(0, n):
                 answers.append(''.join(raw_answers[i]))
-            print(q_name(c[0]))
             question.q_id = c[0]
             question.q_answered = False
             n = len(answers)
@@ -119,6 +126,7 @@ async def one_poll(b):
         await main_menu()
 
 
+# Main message with buttons for actions
 async def main_menu():
     global welc
     welc = await bot.send_message(user.id_chat,
@@ -126,6 +134,7 @@ async def main_menu():
                                   reply_markup=kb_main_btn)
 
 
+# Authorization
 @dp.message_handler(IsPrivate(), text="/start")
 async def bot_auth2(message: types.Message):
     try:
@@ -155,6 +164,7 @@ async def bot_auth2(message: types.Message):
         await message.answer(f'Вы не зарегистрированы или ожидается одобрение регистрации.', reply_markup=kb_menu3)
 
 
+# Asking for password
 @dp.message_handler(IsPrivate(), state=AuthorizationPr.user_lg2)
 async def get_lg(message: types.Message, state: FSMContext):
     await state.update_data(user_lg2=message.text)
@@ -162,6 +172,7 @@ async def get_lg(message: types.Message, state: FSMContext):
     await AuthorizationPr.user_pswd2.set()
 
 
+# Check data and log in
 @dp.message_handler(IsPrivate(), state=AuthorizationPr.user_pswd2)
 async def get_pswd2(message: types.Message, state: FSMContext):
     try:
@@ -190,23 +201,37 @@ async def get_pswd2(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+# Get answers
 @dp.poll_answer_handler()
 async def poll_handler(poll_answer: types.PollAnswer):
-    question.q_answers = search_smth(mysql25, question.available_answers[(int(''.join(map(str, poll_answer.option_ids))))])
+    question.q_answers = search_smth(mysql25,
+                                     question.available_answers[(int(''.join(map(str, poll_answer.option_ids))))])
     votes = search_smth(mysql27, question.q_answers)
     cursor2.execute(mysql26, ((votes + 1), question.q_answers,))
+    question.q_poll_id = poll_answer.poll_id
     db.commit()
 
 
+# Buttons
 @dp.callback_query_handler(lambda call: True)
 async def main_buttons(callback_query: types.CallbackQuery):
     if callback_query.data == 'show_old_q':
         await welc.delete()
-        await bot.send_message(user.id_chat, "text1")
+        if len(search_qid(user.user_db_id)) > 0:
+            mark = get_questions(search_q_name(search_qid(user.user_db_id)))
+            global show_questions
+            show_questions = await bot.send_message(user.id_chat, text="Вы можете просмотреть результаты следубщих опросов:",
+                                   reply_markup=mark)
+        else:
+            nothing = await bot.send_message(user.id_chat, text="На данный момент доступных для просмотра результатов нет.")
+            await sleep(5)
+            await nothing.delete()
     elif callback_query.data == 'start':
         await bot.send_message(user.id_chat, text=f'Здравствуйте, \n'
                                                   f'для авторизации введите свой логин:')
         await AuthorizationPr.user_lg2.set()
+    elif callback_query.data == "back":
+        await main_menu()
     elif callback_query.data == "show_new_q":
         await welc.delete()
         q_array = all_questions()
@@ -221,12 +246,14 @@ async def main_buttons(callback_query: types.CallbackQuery):
     elif callback_query.data == "stop_poll":
         await sent_poll.delete()
         await main_menu()
+    elif callback_query.data == "go_back":
+        await main_menu()
     elif callback_query.data == "next_question":
         print(question.q_answers, ' ', q_is_active(question.q_id))
         if question.q_answers >= 0:
             await sent_poll.delete()
             question.q_date = datetime.datetime
-            cursor2.execute(mysql16, (question.q_id, question.q_answers, user.user_db_id))
+            cursor2.execute(mysql16, (question.q_id, question.q_answers, user.user_db_id, question.q_poll_id))
             db.commit()
             question.available_answers.clear()
             done = await bot.send_message(user.id_chat, text="Ваш голос успешно принят!")
@@ -246,4 +273,24 @@ async def main_buttons(callback_query: types.CallbackQuery):
             await sent_poll.delete()
             await q_closed.delete()
             await main_menu()
+    else:
+        await show_questions.delete()
+        name_q = callback_query.data
+        id_q = search_smth(mysql14, name_q)
+        cursor2.execute(mysql15, (id_q,))
+        raw_answers = cursor2.fetchall()
+        n = len(raw_answers)
+        answers = []
+        for i in range(0, n):
+            answers.append(''.join(raw_answers[i]))
+        s = []
+        for i in range(0, n):
+            aid = search_smth(mysql25, answers[i])
+            votes = search_smth(mysql27, aid)
+            s.append(answers[i] + f' - ' + str(votes) + ' гол.')
+        separator = " \n"
+        result_string = separator.join(s)
+        result = await bot.send_message(user.id_chat, name_q + " \n" + result_string, reply_markup=kb_go_back)
+        await sleep(5)
+        await result.delete()
     await bot.answer_callback_query(callback_query.id)

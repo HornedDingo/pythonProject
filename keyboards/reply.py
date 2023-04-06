@@ -35,3 +35,7 @@ kb_new_poll = InlineKeyboardMarkup()
 b1 = InlineKeyboardButton(text='Продолжить', callback_data='continue_poll')
 b2 = InlineKeyboardButton(text='Отменить', callback_data='close_poll')
 kb_new_poll.add(b1).add(b2)
+
+kb_go_back = InlineKeyboardMarkup()
+b0 = InlineKeyboardButton(text='Вернуться в меню', callback_data='go_back')
+kb_go_back.add(b0)

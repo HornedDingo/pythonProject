@@ -1,6 +1,7 @@
-from database import db
-from database import mysql7, mysql8, mysql9, mysql10, mysql11, mysql12, mysql15, mysql21, mysql22
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+from database import db
+from database import mysql7, mysql8, mysql9, mysql10, mysql11, mysql23
 
 cursor2 = db.cursor(buffered=True)
 
@@ -55,3 +56,31 @@ def q_done(id_q, user_id):
     else:
         done_q = False
     return done_q
+
+
+def search_qid(user_id):
+    query = mysql23
+    userid = user_id
+    cursor2.execute(query, (userid,))
+    qid = cursor2.fetchall()
+    n = len(qid)
+    c = []
+    for i in range(0, n):
+        c.append(int(''.join(map(str, qid[i]))))
+    return c
+
+
+def search_q_name(data):
+    b = data
+    questions = []
+    n = len(b)
+    for i in range(0, n):
+        questions.append(''.join(map(str, q_name(b[i]))))
+    return questions
+
+
+def get_questions(data):
+    questions = InlineKeyboardMarkup()
+    b0 = InlineKeyboardButton(text='Назад', callback_data='back')
+    questions.add(*[InlineKeyboardButton(button, callback_data=button) for button in data]).add(b0)
+    return questions
